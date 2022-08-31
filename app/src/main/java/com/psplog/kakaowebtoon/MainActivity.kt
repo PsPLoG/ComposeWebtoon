@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
@@ -31,6 +32,7 @@ import coil.request.ImageRequest
 import coil.size.Size
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
+import com.psplog.kakaowebtoon.SpecialWebtoonEntity.Companion.dummyList
 import com.psplog.kakaowebtoon.ui.theme.KakaowebtoonTheme
 
 @OptIn(ExperimentalPagerApi::class)
@@ -107,6 +109,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun specialTabContent() {
         val context = LocalContext.current
+        val itemState = rememberLazyListState(Int.MAX_VALUE / 2)
         val imageLoader = ImageLoader.Builder(context)
             .components {
                 if (SDK_INT >= 28) {
@@ -116,9 +119,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
             .build()
-
-        LazyColumn {
-            items(SpecialWebtoonEntity.dummyList) { webtoon ->
+        val itemList = dummyList
+        LazyColumn(state = itemState) {
+            items(Int.MAX_VALUE, itemContent = { index ->
+                val webtoon = itemList[index % itemList.size]
                 Box() {
                     Image(
                         painter = rememberAsyncImagePainter(
@@ -134,7 +138,8 @@ class MainActivity : ComponentActivity() {
                             .height(400.dp)
                     )
                     LazyRow(
-                        modifier = Modifier.wrapContentHeight()
+                        modifier = Modifier
+                            .wrapContentHeight()
                             .align(Alignment.BottomCenter)
                     ) {
                         items(webtoon.tags) { tag ->
@@ -148,7 +153,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-            }
+            })
         }
     }
 }
