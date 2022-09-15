@@ -2,11 +2,14 @@ package com.psplog.kakaowebtoon
 
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -15,14 +18,13 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.rememberAsyncImagePainter
@@ -31,7 +33,6 @@ import coil.decode.ImageDecoderDecoder
 import coil.request.ImageRequest
 import coil.size.Size
 import com.google.accompanist.pager.ExperimentalPagerApi
-import com.google.accompanist.pager.HorizontalPager
 import com.psplog.kakaowebtoon.SpecialWebtoonEntity.Companion.dummyList
 import com.psplog.kakaowebtoon.ui.theme.KakaowebtoonTheme
 
@@ -59,17 +60,18 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun mainPager() {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center
-        ) {
-            HorizontalPager(
-                modifier = Modifier.fillMaxSize(),
-                count = 1
-            ) { page ->
-                specialTabContent()
-            }
-        }
+
+        specialTabContent()
+//        Column(
+//            modifier = Modifier.fillMaxSize(),
+//            verticalArrangement = Arrangement.Center
+//        ) {
+//            HorizontalPager(
+//                modifier = Modifier.fillMaxSize(),
+//                count = 1
+//            ) { page ->
+//            }
+//        }
     }
 
     @Composable
@@ -120,6 +122,9 @@ class MainActivity : ComponentActivity() {
             }
             .build()
         val itemList = dummyList
+
+
+
         LazyColumn(state = itemState) {
             items(Int.MAX_VALUE, itemContent = { index ->
                 val webtoon = itemList[index % itemList.size]
@@ -135,22 +140,56 @@ class MainActivity : ComponentActivity() {
                         contentDescription = webtoon.title,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(400.dp)
+
+                            .height(
+                                with(LocalDensity.current) {
+                                    (context.resources.displayMetrics.heightPixels * 0.7)
+                                        .toInt()
+                                        .toDp()
+                                })
                     )
+                    val infiniteTransition = rememberInfiniteTransition()
+                    val scrollPosition by infiniteTransition.animateValue(
+                        initialValue = 0,
+                        targetValue = webtoon.tags.size - 1,
+                        typeConverter = Int.VectorConverter,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(2000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        )
+                    )
+                    val tagState = rememberLazyListState(scrollPosition)
+                    var direction by remember {
+                        mutableStateOf(1)
+                    }
+
+                    LaunchedEffect(scrollPosition) {
+                        if (tagState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == tagState.layoutInfo.totalItemsCount - 1) {
+                            direction = -1
+                            Log.d("asd", "${direction} + ${this.hashCode()}")
+                        }
+                        if (tagState.layoutInfo.visibleItemsInfo.firstOrNull()?.index == 0) {
+                            direction = 1
+                            Log.d("asd", "${direction} + ${this.hashCode()}")
+                        }
+                        tagState.scrollBy(direction * scrollPosition.toFloat())
+                    }
                     LazyRow(
+                        state = tagState,
                         modifier = Modifier
                             .wrapContentHeight()
                             .align(Alignment.BottomCenter)
                     ) {
-                        items(webtoon.tags) { tag ->
+                        items(webtoon.tags.size, itemContent = { index ->
+                            val tag = webtoon.tags[index]
                             Text(
                                 text = tag,
                                 color = Color.White,
                                 modifier = Modifier
-                                    .padding(4.dp, 8.dp)
-                                    .background(Color.Gray)
+                                    .padding(8.dp, 8.dp)
+                                    .background(Color(scrollPosition * 8, 0, 0))
                             )
-                        }
+                        })
                     }
                 }
             })
